@@ -1,0 +1,132 @@
+<html>
+
+<head>
+
+<title>Leaflet Web Map</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+  integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+  crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+  integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+  crossorigin=""></script>
+  <link rel="stylesheet" href="./Leaflet.markercluster-1.4.1/dist/MarkerCluster.css"/>
+   <link rel="stylesheet" href="./Leaflet.markercluster-1.4.1/dist/MarkerCluster.Default.css"/>
+  <script src="./Leaflet.markercluster-1.4.1/dist/leaflet.markercluster.js"></script>
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="./Leaflet.heat/dist/leaflet-heat.js"></script> 
+
+<style>
+#map {
+    width: 100%;
+    height:100%;
+}
+</style>
+
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+<script>
+var clustover = L.layerGroup();
+var heatover = L.layerGroup(); 
+var hoodover = L.layerGroup();    
+    
+    
+    
+    var map = L.map('map',{scrollWheelZoom:true}).setView([42.35, -71.08], 13);
+
+     L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}{r}.{ext}', {
+	attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+	subdomains: 'abcd',
+    minZoom: 9,
+	maxZoom: 17,
+	ext: 'png'
+}).addTo(map);
+    
+    //var marker = L.marker([43.64701, -79.39425]).bindPopup("<b>Hello world!</b><br>I am a popup.").addTo(map);
+    
+    // load GeoJSON from an external file
+     
+    // draws svg boundaries
+     $.getJSON("neighborhoods.geojson",function(hoodData){
+  L.geoJson( hoodData , {
+    style: function(feature){
+      var fillColor,
+          density = feature.properties.density;
+      if ( density > 80 ) fillColor = "#800026";
+      else if ( density > 40 ) fillColor = "#BD0026";
+      else if ( density > 20 ) fillColor = "#FC4E2A";
+      else if ( density > 10 ) fillColor = "#FD8D3C";
+      else if ( density > 0 ) fillColor = "#FEB24C";
+      else fillColor = "##FED976";  // no data
+      return { color: "#999", weight: 1, fillColor: fillColor, fillOpacity: .6 };
+    },
+    onEachFeature: function( feature, layer ){
+      layer.bindPopup( "<strong>" + feature.properties.Name + "</strong><br/>" + feature.properties.density + " rats per square mile" )
+    }
+  }  ).addTo(hoodover);
+});
+    
+  // gets rodent data from json  and it adds it to a checkbox legend
+$.getJSON("rodents.geojson",function(data){
+  //changes icon to rats 
+    var ratIcon = L.icon({
+    iconUrl: 'http://maptimeboston.github.io/leaflet-intro/rat.png',
+    iconSize: [60,50]
+  });
+ 
+    //parses data and assigns a marker
+   var rodents = L.geoJson(data,{
+    pointToLayer: function(feature,latlng){
+      var marker = L.marker(latlng,{icon: ratIcon});
+      marker.bindPopup(feature.properties.Location + '<br/>' + feature.properties.OPEN_DT);
+      return marker;
+    }
+  });
+    
+  
+       var clusters = L.markerClusterGroup();
+    clusters.addLayer(rodents).addTo(clustover);
+    //map.addLayer(clusters); 
+     
+      
+});
+ 
+    
+  // gets rodent data from json  
+$.getJSON("rodents.geojson",function(data){
+    var locations = data.features.map(function(rat) {
+      // the heatmap plugin wants an array of each location
+      var location = rat.geometry.coordinates.reverse();
+      location.push(0.5);
+      return   location; // e.g. [50.5, 30.5, 0.2], // lat, lng, intensity
+        
+    });
+
+    L.heatLayer(locations, { radius: 35 }).addTo(heatover);
+   //map.addlayer(heat);
+   
+  });
+    
+     
+
+    
+    
+    
+     
+  var overlays = {
+		"Rat Sightings": clustover,
+        "Neighborhoods": hoodover,
+        "Heat Map": heatover
+	};
+    L.control.layers(null, overlays).addTo(map);
+
+ 
+</script>
+
+</body>
+
+</html>
